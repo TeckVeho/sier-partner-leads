@@ -7,3 +7,8 @@ tmp/
 *.tmp.csv
 .idea/
 .vscode/
+_incoming_*.csv
+*.lock
+*.lock.bak
+*.lock.bak[0-9]
+_to_delete/

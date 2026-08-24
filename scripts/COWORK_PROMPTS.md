@@ -1,6 +1,7 @@
 # Cowork に貼る指示文
 
-Slack 通知先は DM `D0B8J0CJNUS`。該当候補が0件の日は送らない。
+Slack 通知先は DM `D01BG830F9U`。該当候補が0件の日は送らない。
+設定値が `CONTEXT.md` と食い違ったら、`CONTEXT.md` を正とする。
 
 ## 初回セットアップ（人側）
 
@@ -19,7 +20,7 @@ sier-partner-screening スキルを使って、地方SIerパートナー候補�
 
 対象県: 群馬・栃木・茨城
 リポジトリ: [cloneしたローカルパス]
-Slack通知先: D0B8J0CJNUS（自分自身へのDM）
+Slack通知先: D01BG830F9U（自分自身へのDM）
 
 手順:
 1. data/candidates.csv を読み、既に登録済みの企業を把握する（再取得・再スコアリングしない）
@@ -33,7 +34,7 @@ Slack通知先: D0B8J0CJNUS（自分自身へのDM）
    b. 除外すべきと判断したら、その理由をcandidates.csvのverdictに追記して終了
       (Issue化しない、Slack通知もしない)
    c. 候補として問題なければ、GitHub Issueを作成しラベル「要確認」を付ける
-   d. Slackの D0B8J0CJNUS に通知する。以下の内容を含める:
+   d. Slackの D01BG830F9U に通知する。以下の内容を含める:
       - 企業名・都道府県・サブタイプ・スコア
       - 深掘りで分かった判断根拠(1-2行)
       - Issueへのリンク

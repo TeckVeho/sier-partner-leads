@@ -30,7 +30,7 @@ gh auth status   # 未認証なら gh auth login
 Cowork のプロジェクトに、clone したパスを追加する。
 日次タスクの文面は `scripts/COWORK_PROMPTS.md` を貼る。
 
-Slack 通知先は DM `D0B8J0CJNUS`。
+Slack 通知先は DM `D01BG830F9U`。他ファイルと食い違ったら `CONTEXT.md` を正とする。
 
 ## スクリプト
 

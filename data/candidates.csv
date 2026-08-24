@@ -1,6 +1,6 @@
 company_name,prefecture,city,website,subtype,legacy_score,bonus_score,total_score,source,fetched_ok,verdict,rationale,issue_url,added_at,updated_at
 SDC,群馬,,,,,,,seed,true,既存パートナー,既存パートナーのため対象外（Issue化・Slack通知しない）,,2026-08-24,2026-08-24
-株式会社トータルシステムデザイン,茨城,取手市,https://www.kktsd.jp/,B型(開発),9,1,10,IBIS会員一覧(https://www.ibis.or.jp/member),true,要確認,設立1984年。独立系SIer各社・大塚商会等と取引し、民間企業約200社と茨城県内市町村役場を含む顧客基盤あり。人事給与・会計・販売管理などの業務システムを自社開発。生成AI等の記述なし。深掘りで除外要素なし。,,2026-08-24,2026-08-24
-株式会社テクノ産業,栃木,那須塩原市,https://www.tecowl.co.jp/,B型(開発),9,1,10,TISA会員一覧(https://www.tisia.or.jp/companies/),true,要確認,設立1982年、中小企業向けオフコン販売から出発し、自動車整備業向け自社パッケージ(AUTO ANSWER等)をDelphi等で自社開発・販売する業種特化ベンダー。生成AI等の記述なし。深掘りで除外要素なし。,,2026-08-24,2026-08-24
+株式会社トータルシステムデザイン,茨城,取手市,https://www.kktsd.jp/,B型(開発),9,1,10,IBIS会員一覧(https://www.ibis.or.jp/member),true,要確認,設立1984年。独立系SIer各社・大塚商会等と取引し、民間企業約200社と茨城県内市町村役場を含む顧客基盤あり。人事給与・会計・販売管理などの業務システムを自社開発。生成AI等の記述なし。深掘りで除外要素なし。,https://github.com/TeckVeho/sier-partner-leads/issues/1,2026-08-24,2026-08-24
+株式会社テクノ産業,栃木,那須塩原市,https://www.tecowl.co.jp/,B型(開発),9,1,10,TISA会員一覧(https://www.tisia.or.jp/companies/),true,要確認,設立1982年、中小企業向けオフコン販売から出発し、自動車整備業向け自社パッケージ(AUTO ANSWER等)をDelphi等で自社開発・販売する業種特化ベンダー。生成AI等の記述なし。深掘りで除外要素なし。,https://github.com/TeckVeho/sier-partner-leads/issues/2,2026-08-24,2026-08-24
 株式会社アイエスアイ,茨城,那珂郡東海村,http://www.isi-mail.co.jp/,,9,1,10,IBIS会員一覧(https://www.ibis.or.jp/member),true,除外(深掘り),制御装置のハード設計・製造とOA機器販売が主体で、基幹業務システムの受託開発を主業とする地方SIerの実態が薄いと判断。ルールベースではスコア10だが深掘りで対象外。,,2026-08-24,2026-08-24
 株式会社つくば情報システム,茨城,つくば市,https://tisys.jp/,,0,0,0,IBIS会員一覧(https://www.ibis.or.jp/member),false,情報不足/要再調査,公式サイトから所在地・電話番号等の会社情報を確認できず、スコアリングに足る本文が得られなかったため今回は候補外。次回別ソースで再調査する。,,2026-08-24,2026-08-24
