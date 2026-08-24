@@ -1,0 +1,2 @@
+company_name,prefecture,city,website,subtype,legacy_score,bonus_score,total_score,source,fetched_ok,verdict,rationale,issue_url,added_at,updated_at
+SDC,群馬,,,,,,,seed,true,既存パートナー,既存パートナーのため対象外（Issue化・Slack通知しない）,,2026-08-24,2026-08-24
