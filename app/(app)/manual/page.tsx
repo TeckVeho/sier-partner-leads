@@ -7,7 +7,7 @@ export default function ManualPage() {
     <>
       <PageHeader
         title="取扱マニュアル"
-        description="ARO の目的と、初回セットアップから日常の営業進行までの使い方です。"
+        description="Paag の目的と、初回セットアップから日常の営業進行までの使い方です。"
         actions={
           <Link
             href="/dashboard"

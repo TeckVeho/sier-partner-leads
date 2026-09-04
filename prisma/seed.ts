@@ -178,6 +178,28 @@ async function main() {
     } else {
       await prisma.node.create({ data: node });
     }
+    if (node.rosterUrl) {
+      await prisma.directorySource.upsert({
+        where: { rosterUrl: node.rosterUrl },
+        update: {
+          name: node.name,
+          nodeType: node.nodeType,
+          crawlEnabled: node.crawlEnabled,
+          accessPolicy: node.accessPolicy,
+          officialDomain: new URL(node.rosterUrl).hostname,
+        },
+        create: {
+          name: node.name,
+          nodeType: node.nodeType,
+          rosterUrl: node.rosterUrl,
+          crawlEnabled: node.crawlEnabled,
+          accessPolicy: node.accessPolicy,
+          officialDomain: new URL(node.rosterUrl).hostname,
+          prefectures: node.name.includes("群馬") ? ["群馬"] : node.name.includes("栃木") ? ["栃木"] : node.name.includes("茨城") ? ["茨城"] : [],
+          note: "note" in node ? (node.note as string) : null,
+        },
+      });
+    }
   }
 
   for (const rule of INITIAL_SCORING_RULES) {

@@ -44,6 +44,11 @@ export const NODE_TYPE_LABELS: Record<"vendor" | "association" | "financial", st
   financial: "金融",
 };
 
+export const DISCOVERY_METHOD_LABELS: Record<"partner_site" | "official_roster", string> = {
+  partner_site: "サイト",
+  official_roster: "公式名簿",
+};
+
 export const PLAYBOOK_STEPS: Array<{
   key: "roster_crawl" | "signal_extract" | "score_recalc" | "intro_draft";
   label: string;

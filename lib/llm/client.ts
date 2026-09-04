@@ -1,4 +1,5 @@
 import { getGeminiApiKey, getGeminiModel, isLlmConfigured, LLM_TIMEOUT_MS, requireLlmConfigured } from "@/lib/llm/config";
+import type { GeminiSchema } from "@/lib/llm/gemini-schemas";
 import { extractJsonPayload } from "@/lib/llm/schemas";
 
 export { isLlmConfigured };
@@ -11,7 +12,7 @@ type GeminiResponse = {
   error?: { message?: string };
 };
 
-async function completeOnce(system: string, user: string): Promise<string> {
+async function completeOnce(system: string, user: string, schema?: GeminiSchema): Promise<string> {
   await requireLlmConfigured();
   const key = await getGeminiApiKey();
   const model = encodeURIComponent(getGeminiModel());
@@ -31,6 +32,7 @@ async function completeOnce(system: string, user: string): Promise<string> {
           temperature: 0.2,
           maxOutputTokens: 3072,
           responseMimeType: "application/json",
+          ...(schema ? { responseSchema: schema } : {}),
         },
       }),
       signal: controller.signal,
@@ -51,6 +53,24 @@ async function completeOnce(system: string, user: string): Promise<string> {
     return text;
   } finally {
     clearTimeout(timer);
+  }
+}
+
+export async function completeStructured(system: string, user: string, schema: GeminiSchema): Promise<unknown> {
+  try {
+    return extractJsonPayload(await completeOnce(system, user, schema));
+  } catch (first) {
+    try {
+      return extractJsonPayload(
+        await completeOnce(
+          `${system}\n\n前回の出力は JSON として不正でした。指定スキーマの JSON オブジェクトだけを返してください。`,
+          user,
+          schema,
+        ),
+      );
+    } catch {
+      throw first instanceof Error ? first : new Error("Gemini の呼び出しに失敗しました");
+    }
   }
 }
 

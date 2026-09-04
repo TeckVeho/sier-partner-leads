@@ -4,13 +4,16 @@ export function Badge({
   children,
   variant = "primary",
   className,
+  title,
 }: {
   children: React.ReactNode;
   variant?: "primary" | "success" | "warning" | "danger" | "muted";
   className?: string;
+  title?: string;
 }) {
   return (
     <span
+      title={title}
       className={cn(
         "inline-flex items-center rounded bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary",
         variant === "success" && "bg-success/10 text-success",

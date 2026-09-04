@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { acceptNodeProposal, rejectNodeProposal, startNodeDiscovery } from "@/app/actions/node-proposals";
-import { NODE_TYPE_LABELS } from "@/lib/scoring/labels";
+import { DISCOVERY_METHOD_LABELS, NODE_TYPE_LABELS } from "@/lib/scoring/labels";
 
 export type NodeProposalRow = {
   id: string;
@@ -14,6 +14,8 @@ export type NodeProposalRow = {
   rosterUrl: string | null;
   evidenceText: string;
   confidence: number | null;
+  discoveryMethod: "partner_site" | "official_roster" | null;
+  sourceUrl: string | null;
   partner: { id: string; name: string; prefecture: string | null };
   matchedNode: { id: string; name: string } | null;
 };
@@ -97,6 +99,9 @@ export function NodeProposalsPanel({
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
                 <Badge variant="muted">{NODE_TYPE_LABELS[row.nodeType]}</Badge>
+                {row.discoveryMethod ? (
+                  <Badge variant="muted">{DISCOVERY_METHOD_LABELS[row.discoveryMethod]}</Badge>
+                ) : null}
                 {row.matchedNode ? <Badge variant="warning">既存: {row.matchedNode.name}</Badge> : null}
               </div>
             </div>

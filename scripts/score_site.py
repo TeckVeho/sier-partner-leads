@@ -90,7 +90,7 @@ def html_to_text(html: str) -> str:
 def fetch_url(url: str, timeout: float = 15.0) -> str:
     request = Request(
         url,
-        headers={"User-Agent": "sier-partner-leads-score/1.0"},
+        headers={"User-Agent": "paag-score/1.0"},
     )
     with urlopen(request, timeout=timeout) as response:
         raw = response.read()

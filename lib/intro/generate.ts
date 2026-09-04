@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { runIntroDraft } from "@/lib/llm/run-intro-draft";
+import { NODE_TYPE_LABELS } from "@/lib/scoring/labels";
 
 export async function createIntroRequest(input: {
   companyId: string;
@@ -8,7 +9,7 @@ export async function createIntroRequest(input: {
 }) {
   const company = await prisma.company.findUnique({
     where: { id: input.companyId },
-    include: { scores: { orderBy: { calculatedAt: "desc" }, take: 1 } },
+    include: { profile: true },
   });
   if (!company) throw new Error("Company not found");
 
@@ -16,17 +17,16 @@ export async function createIntroRequest(input: {
   const node = await prisma.node.findUnique({ where: { id: input.viaNodeId } });
   if (!partner || !node) throw new Error("Path not found");
 
-  const latest = company.scores[0];
   const generated = await runIntroDraft({
     companyName: company.name,
     partnerName: partner.name,
-    partnerNote: partner.relationshipNote,
     nodeName: node.name,
+    nodeTypeLabel: NODE_TYPE_LABELS[node.nodeType],
     prefecture: company.prefecture,
     city: company.city,
-    priority: latest?.priority ?? null,
-    icpScore: latest?.icpScore ?? null,
-    pathScore: latest?.pathScore ?? null,
+    summary: company.profile?.summary ?? null,
+    offerings: company.profile?.offerings ?? [],
+    customers: company.profile?.customers ?? null,
   });
 
   return prisma.introRequest.create({

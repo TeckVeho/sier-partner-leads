@@ -1,4 +1,4 @@
-# ARO（sier-partner-leads）
+# Paag
 
 地方 SIer パートナー開拓支援システム。既存 Cowork スキル `sier-partner-screening` の後継。
 
@@ -58,7 +58,7 @@ http://localhost:3000 にアクセス。
 AWS ECS Fargate + RDS PostgreSQL を前提としています。詳細は `docs/01_implementation_plan.md` を参照。
 
 ```bash
-docker build -t aro .
+docker build -t paag .
 ```
 
 ## レガシーパイプライン

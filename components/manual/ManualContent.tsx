@@ -64,7 +64,7 @@ export function ManualContent() {
       <div className="space-y-10">
         <Section id="overview" title="このシステムで何をするか">
           <p>
-            ARO は、既存パートナーの対象エリアを中心に地方 SIer を
+            Paag は、既存パートナーの対象エリアを中心に地方 SIer を
             <strong>紹介できる順</strong>に開拓するための台帳です。
             新しい会社を毎日探すことが目的ではありません。
           </p>
@@ -179,16 +179,10 @@ export function ManualContent() {
           </p>
           <ul className="list-disc space-y-1 pl-5">
             <li>
-              <strong>再調査</strong> … 企業サイトを取得し、スキルでシグナルと調査メモを抽出します。根拠が無い判定は採用しません
+              <strong>調査メモ</strong> … 台帳更新の再調査で作る要約。採点には使いません。根拠不足のときは前回のメモを残します
             </li>
             <li>
-              <strong>調査メモ</strong> … 再調査で作る要約。採点には使いません。根拠不足のときは前回のメモを残します
-            </li>
-            <li>
-              <strong>再採点</strong> … いまのルールでスコアだけやり直します
-            </li>
-            <li>
-              <strong>依頼下書き</strong> … 紹介経路があるときだけ出せます。既存パートナーと共通ノードが必要です
+              <strong>依頼下書き</strong> … 紹介タブから出せます。既存パートナーと共通ノードが必要です
             </li>
           </ul>
 

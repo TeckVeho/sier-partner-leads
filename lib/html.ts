@@ -18,15 +18,21 @@ export function htmlToText(html: string): string {
 }
 
 export function extractLinks(html: string, baseUrl: string): string[] {
-  const links = new Set<string>();
-  const re = /href=["']([^"']+)["']/gi;
+  return [...new Set(extractAnchors(html, baseUrl).map((anchor) => anchor.href))];
+}
+
+export function extractAnchors(html: string, baseUrl: string): Array<{ href: string; text: string }> {
+  const results: Array<{ href: string; text: string }> = [];
+  const re = /<a\s[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
   let match: RegExpExecArray | null;
   while ((match = re.exec(html)) !== null) {
     try {
-      links.add(new URL(match[1], baseUrl).toString());
+      const href = new URL(match[1], baseUrl).toString();
+      const text = htmlToText(match[2] ?? "").slice(0, 80);
+      results.push({ href, text });
     } catch {
       // ignore invalid URLs
     }
   }
-  return [...links];
+  return results;
 }

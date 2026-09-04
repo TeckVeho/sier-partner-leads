@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,8 +18,7 @@ import {
   describeModelVersion,
   describeModelName,
 } from "@/lib/scoring/labels";
-import { cn, formatDate } from "@/lib/utils";
-import { rerunSignalExtract, rescoreCompany } from "@/app/actions/companies";
+import { cn, formatDate, formatDateTime } from "@/lib/utils";
 import { generateIntroRequest } from "@/app/actions/intro-requests";
 
 const TABS = ["survey", "intro", "activity"] as const;
@@ -118,6 +117,24 @@ function introStatusVariant(status: string) {
   return "muted";
 }
 
+function Metric({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-lg bg-surface-subtle px-3 py-2.5">
+      <p className="text-[11px] text-muted">{label}</p>
+      <p className="mt-0.5 text-[22px] font-semibold tabular-nums leading-none tracking-tight">{value}</p>
+    </div>
+  );
+}
+
+function Fact({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-3 border-b border-border/70 py-2.5 last:border-b-0">
+      <dt className="pt-0.5 text-[12px] text-muted">{label}</dt>
+      <dd className="min-w-0 text-[13px] leading-relaxed">{children}</dd>
+    </div>
+  );
+}
+
 export function CompanyDetailClient({ company, paths }: CompanyDetailProps) {
   const [tab, setTabState] = useState<TabId>("survey");
   const [message, setMessage] = useState<string | null>(null);
@@ -131,6 +148,10 @@ export function CompanyDetailClient({ company, paths }: CompanyDetailProps) {
       "priority:out_of_coverage" in (latestScore.breakdown as Record<string, unknown>),
   );
   const location = [company.prefecture, company.city].filter(Boolean).join(" ") || "所在地未設定";
+  const notices = [
+    company.exclusionReason,
+    company.profile?.cautions,
+  ].filter((item): item is string => Boolean(item));
 
   useEffect(() => {
     setTabState(parseTab(new URLSearchParams(window.location.search).get("tab")));
@@ -158,112 +179,84 @@ export function CompanyDetailClient({ company, paths }: CompanyDetailProps) {
   }
 
   return (
-    <>
-      <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-xl font-semibold tracking-tight text-text">{company.name}</h1>
-          <p className="mt-1 text-[13px] text-muted">
-            {location}
-            <span className="mx-1.5">·</span>
-            {COMPANY_STATUS_LABELS[company.status as keyof typeof COMPANY_STATUS_LABELS] ?? company.status}
-            <span className="mx-1.5">·</span>
-            取得 {formatDate(company.discoveredAt)}
-            {company.url ? (
-              <>
-                <span className="mx-1.5">·</span>
-                <a href={company.url} target="_blank" rel="noreferrer" className="text-primary hover:underline">
-                  サイト
-                </a>
-              </>
-            ) : null}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="secondary"
-            loading={pending}
-            onClick={() =>
-              runAction(() => rerunSignalExtract(company.id), "再調査を開始しました（サイト取得のあとシグナルと調査メモを更新します）")
-            }
-          >
-            再調査
-          </Button>
-          <Button
-            variant="secondary"
-            loading={pending}
-            onClick={() => runAction(() => rescoreCompany(company.id), "スコアを再計算しました")}
-          >
-            再採点
-          </Button>
-          <Link href="/companies">
-            <Button variant="secondary">一覧へ戻る</Button>
-          </Link>
-        </div>
-      </header>
-
+    <div className="mx-auto max-w-5xl">
       {message ? <Alert variant="success" className="mb-3">{message}</Alert> : null}
       {error ? <Alert variant="danger" className="mb-3">{error}</Alert> : null}
-      {company.exclusionReason ? (
-        <Alert variant="warning" className="mb-3">
-          除外/保留理由: {company.exclusionReason}
-        </Alert>
-      ) : null}
-      {company.profile?.cautions ? (
-        <Alert variant="warning" className="mb-3">
-          注意: {company.profile.cautions}
-        </Alert>
-      ) : null}
 
-      <section className="rounded-xl border border-border bg-white px-4 py-4">
-        <div className="flex flex-wrap items-center gap-2">
-          {latestScore ? (
-            <Badge variant={priorityVariant(latestScore.priority)}>
-              {PRIORITY_LABELS[latestScore.priority as keyof typeof PRIORITY_LABELS]}
-            </Badge>
-          ) : (
-            <Badge variant="muted">未採点</Badge>
-          )}
-          <Badge variant="muted">{PIPELINE_LABELS[latestStage as keyof typeof PIPELINE_LABELS] ?? latestStage}</Badge>
-          {outOfCoverage ? <Badge variant="warning">エリア外</Badge> : null}
-          {company.nodeMemberships.map((membership) => (
-            <Badge key={membership.node.id} variant="muted">
-              {membership.node.name}
-            </Badge>
-          ))}
+      <section className="overflow-hidden rounded-xl border border-border bg-white">
+        <header className="flex flex-wrap items-start justify-between gap-3 px-5 py-4">
+          <div className="min-w-0">
+            <h1 className="text-xl font-semibold tracking-tight text-text">{company.name}</h1>
+            <p className="mt-1 flex flex-wrap items-center gap-x-2 text-[13px] text-muted">
+              <span>{location}</span>
+              <span>·</span>
+              <span>取得 {formatDate(company.discoveredAt)}</span>
+              {company.url ? (
+                <>
+                  <span>·</span>
+                  <a href={company.url} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                    サイト
+                  </a>
+                </>
+              ) : null}
+            </p>
+          </div>
+          <Link href="/companies">
+            <Button variant="ghost">一覧へ戻る</Button>
+          </Link>
+        </header>
+
+        <div className="grid gap-4 border-t border-border px-5 py-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
+          <div className="grid grid-cols-3 gap-2 lg:grid-cols-1">
+            <Metric label="ICP" value={latestScore ? latestScore.icpScore : "—"} />
+            <Metric label="経路" value={latestScore ? latestScore.pathScore : "—"} />
+            <Metric label="紹介経路" value={paths.length} />
+          </div>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {latestScore ? (
+                <Badge variant={priorityVariant(latestScore.priority)}>
+                  {PRIORITY_LABELS[latestScore.priority as keyof typeof PRIORITY_LABELS]}
+                </Badge>
+              ) : (
+                <Badge variant="muted">未採点</Badge>
+              )}
+              <Badge variant="muted">
+                {COMPANY_STATUS_LABELS[company.status as keyof typeof COMPANY_STATUS_LABELS] ?? company.status}
+              </Badge>
+              <Badge variant="muted">{PIPELINE_LABELS[latestStage as keyof typeof PIPELINE_LABELS] ?? latestStage}</Badge>
+              {outOfCoverage ? <Badge variant="warning">エリア外</Badge> : null}
+              {company.nodeMemberships.map((membership) => (
+                <Badge key={membership.node.id} variant="muted" className="max-w-[14rem] truncate" title={membership.node.name}>
+                  {membership.node.name}
+                </Badge>
+              ))}
+            </div>
+            <p className={cn("mt-3 text-[14px] leading-relaxed", company.profile ? "text-text" : "text-muted")}>
+              {company.profile?.summary ?? "台帳を更新すると、サイト本文から調査メモが入ります。"}
+            </p>
+            {notices.length > 0 ? (
+              <ul className="mt-3 space-y-1.5">
+                {notices.map((notice) => (
+                  <li
+                    key={notice}
+                    className="rounded-md border border-warning/25 bg-warning/5 px-2.5 py-1.5 text-[12px] leading-relaxed text-text"
+                  >
+                    {notice}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {latestScore ? (
+              <p className="mt-2 text-[11px] text-muted">
+                算出 {formatDateTime(latestScore.calculatedAt)}
+                {outOfCoverage ? " · パートナー対象エリア外のため優先度 C" : ""}
+              </p>
+            ) : null}
+          </div>
         </div>
 
-        <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <div>
-            <dt className="text-[11px] text-muted">ICP</dt>
-            <dd className="text-[20px] font-semibold tabular-nums leading-tight">
-              {latestScore ? latestScore.icpScore : "—"}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-[11px] text-muted">経路</dt>
-            <dd className="text-[20px] font-semibold tabular-nums leading-tight">
-              {latestScore ? latestScore.pathScore : "—"}
-            </dd>
-          </div>
-          <div className="col-span-2 sm:col-span-1">
-            <dt className="text-[11px] text-muted">紹介経路</dt>
-            <dd className="text-[20px] font-semibold tabular-nums leading-tight">{paths.length}</dd>
-          </div>
-        </dl>
-
-        <p className={cn("mt-4 text-[14px] leading-relaxed", company.profile ? "text-text" : "text-muted")}>
-          {company.profile?.summary ?? "再調査すると、サイト本文から調査メモが入ります。"}
-        </p>
-        {latestScore ? (
-          <p className="mt-2 text-[12px] text-muted">
-            算出 {new Date(latestScore.calculatedAt).toLocaleString("ja-JP")}
-            {outOfCoverage ? " · パートナー対象エリア外のため優先度 C" : ""}
-          </p>
-        ) : null}
-      </section>
-
-      <section className="mt-4 overflow-hidden rounded-xl border border-border bg-white">
-        <div className="px-2">
+        <div className="border-t border-border bg-surface-subtle px-2 pt-1">
           <Tabs
             value={tab}
             onChange={setTab}
@@ -274,7 +267,7 @@ export function CompanyDetailClient({ company, paths }: CompanyDetailProps) {
             ]}
           />
         </div>
-        <div className="px-4 py-4">
+        <div className="px-5 py-5">
           {tab === "survey" ? <SurveyTab company={company} /> : null}
           {tab === "intro" ? (
             <IntroTab
@@ -292,95 +285,90 @@ export function CompanyDetailClient({ company, paths }: CompanyDetailProps) {
           {tab === "activity" ? <ActivityTab company={company} /> : null}
         </div>
       </section>
-    </>
+    </div>
   );
 }
 
 function SurveyTab({ company }: Pick<CompanyDetailProps, "company">) {
   const profile = company.profile;
-  const facts = profile
-    ? [
-        {
-          label: "事業",
-          value: [
-            BUSINESS_MODEL_LABELS[profile.businessModel] ?? profile.businessModel,
-            profile.offerings.length > 0 ? profile.offerings.join("、") : null,
-          ]
-            .filter(Boolean)
-            .join(" · "),
-        },
-        { label: "顧客層", value: profile.customers },
-        { label: "技術・資産", value: profile.techAssets },
-        { label: "変化の兆し", value: profile.changeSignals },
-        { label: "設立", value: profile.establishedYear },
-        { label: "規模", value: profile.employeeScale },
-      ].filter((row) => row.value)
-    : [];
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    <div className="grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
       <div>
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-[14px] font-semibold">調査メモ</h2>
+        <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-[13px] font-semibold">調査メモ</h2>
           {profile ? (
-            <p className="text-[12px] text-muted">
-              {new Date(profile.extractedAt).toLocaleString("ja-JP")}
+            <p className="text-[11px] text-muted">
+              {formatDateTime(profile.extractedAt)}
               {describeModelName(profile.modelVersion) ? ` · ${describeModelName(profile.modelVersion)}` : ""}
             </p>
           ) : null}
         </div>
         {profile ? (
-          <div className="mt-3 space-y-3 text-[13px]">
-            {facts.length > 0 ? (
-              <dl className="grid gap-3 sm:grid-cols-2">
-                {facts.map((row) => (
-                  <div key={row.label}>
-                    <dt className="text-[12px] text-muted">{row.label}</dt>
-                    <dd className="mt-0.5">{row.value}</dd>
+          <dl>
+            <Fact label="事業">
+              <div className="space-y-1.5">
+                <p>{BUSINESS_MODEL_LABELS[profile.businessModel] ?? profile.businessModel}</p>
+                {profile.offerings.length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    {profile.offerings.map((item) => (
+                      <Badge key={item} variant="muted">
+                        {item}
+                      </Badge>
+                    ))}
                   </div>
-                ))}
-              </dl>
-            ) : (
-              <p className="text-muted">詳細項目はまだありません。</p>
-            )}
+                ) : null}
+              </div>
+            </Fact>
+            {profile.customers ? <Fact label="顧客層">{profile.customers}</Fact> : null}
+            {profile.techAssets ? <Fact label="技術・資産">{profile.techAssets}</Fact> : null}
+            {profile.changeSignals ? <Fact label="変化の兆し">{profile.changeSignals}</Fact> : null}
+            {profile.establishedYear ? <Fact label="設立">{profile.establishedYear}</Fact> : null}
+            {profile.employeeScale ? <Fact label="規模">{profile.employeeScale}</Fact> : null}
             {profile.evidenceText || profile.sourceUrl ? (
-              <div>
-                <p className="text-[12px] text-muted">根拠</p>
-                {profile.evidenceText ? <p className="mt-1 text-muted">「{profile.evidenceText}」</p> : null}
+              <Fact label="根拠">
+                {profile.evidenceText ? <p className="text-muted">「{profile.evidenceText}」</p> : null}
                 {profile.sourceUrl ? (
                   <a
                     href={profile.sourceUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-1 inline-block text-[12px] text-primary hover:underline"
+                    className="mt-1 inline-block break-all text-[12px] text-primary hover:underline"
                   >
                     {profile.sourceUrl}
                   </a>
                 ) : null}
-              </div>
+              </Fact>
             ) : null}
-          </div>
+          </dl>
         ) : (
-          <p className="mt-3 text-[13px] text-muted">再調査すると、サイト本文から調査メモが入ります。</p>
+          <p className="mt-3 text-[13px] text-muted">台帳を更新すると、サイト本文から調査メモが入ります。</p>
         )}
       </div>
 
       <div>
-        <h2 className="text-[14px] font-semibold">シグナル</h2>
-        <ul className="mt-3 space-y-2">
+        <h2 className="mb-2 text-[13px] font-semibold">シグナル</h2>
+        <ul className="space-y-2">
           {company.signals.length === 0 ? (
             <li className="text-[13px] text-muted">シグナルなし</li>
           ) : (
             company.signals.map((signal) => (
-              <li key={signal.id} className="rounded-lg border border-border px-3 py-2 text-[13px]">
+              <li
+                key={signal.id}
+                className={cn(
+                  "rounded-lg border border-border bg-surface-subtle px-3 py-2.5 text-[13px]",
+                  signal.polarity === "exclusion" && "border-danger/20 bg-danger/5",
+                  signal.polarity === "negative" && "border-warning/20 bg-warning/5",
+                )}
+              >
                 <p className="flex flex-wrap items-center gap-1.5 font-medium">
                   {SIGNAL_TYPE_LABELS[signal.signalType as keyof typeof SIGNAL_TYPE_LABELS] ?? signal.signalType}
                   <Badge variant={polarityVariant(signal.polarity)}>
                     {SIGNAL_POLARITY_LABELS[signal.polarity] ?? signal.polarity}
                   </Badge>
-                  <span className="text-[12px] font-normal text-muted">{describeModelVersion(signal.modelVersion)}</span>
                 </p>
-                <p className="mt-1 text-muted">{signal.evidenceText}</p>
+                <p className="mt-1.5 leading-relaxed text-muted">{signal.evidenceText}</p>
+                <p className="mt-1 text-[11px] text-muted">{describeModelVersion(signal.modelVersion)}</p>
               </li>
             ))
           )}
@@ -400,9 +388,9 @@ function IntroTab({
   onDraft: (partnerId: string, nodeId: string) => void;
 }) {
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    <div className="grid gap-8 lg:grid-cols-2">
       <div>
-        <h2 className="text-[14px] font-semibold">紹介経路</h2>
+        <h2 className="text-[13px] font-semibold">紹介経路</h2>
         {paths.length === 0 ? (
           <p className="mt-3 text-[13px] text-muted">共通ノードを持つ既存パートナーがありません。</p>
         ) : (
@@ -410,7 +398,7 @@ function IntroTab({
             {paths.map((path) => (
               <li
                 key={`${path.partnerId}-${path.nodeId}`}
-                className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-[13px]"
+                className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface-subtle px-3 py-2.5 text-[13px]"
               >
                 <div>
                   <p className="font-medium">{path.partnerName}</p>
@@ -429,13 +417,13 @@ function IntroTab({
       </div>
 
       <div>
-        <h2 className="text-[14px] font-semibold">依頼</h2>
+        <h2 className="text-[13px] font-semibold">依頼</h2>
         {company.introRequests.length === 0 ? (
           <p className="mt-3 text-[13px] text-muted">この会社の依頼はまだありません。</p>
         ) : (
           <ul className="mt-3 space-y-2">
             {company.introRequests.map((request) => (
-              <li key={request.id} className="rounded-lg border border-border px-3 py-2 text-[13px]">
+              <li key={request.id} className="rounded-lg border border-border bg-surface-subtle px-3 py-2.5 text-[13px]">
                 <p className="flex flex-wrap items-center gap-1.5 font-medium">
                   {request.viaPartner.name}
                   <Badge variant={introStatusVariant(request.status)}>
@@ -458,20 +446,20 @@ function IntroTab({
 
 function ActivityTab({ company }: Pick<CompanyDetailProps, "company">) {
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+    <div className="grid gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
       <ContactLogSection companyId={company.id} initialLogs={company.contactLogs} framed={false} />
       <div>
-        <h2 className="text-[14px] font-semibold">パイプライン履歴</h2>
+        <h2 className="text-[13px] font-semibold">パイプライン履歴</h2>
         <ul className="mt-3 space-y-2">
           {company.pipelineEvents.length === 0 ? (
             <li className="text-[13px] text-muted">未接触</li>
           ) : (
             company.pipelineEvents.map((event) => (
-              <li key={event.id} className="rounded-lg border border-border px-3 py-2 text-[13px]">
+              <li key={event.id} className="rounded-lg border border-border bg-surface-subtle px-3 py-2.5 text-[13px]">
                 <p className="font-medium">
                   {PIPELINE_LABELS[event.stage as keyof typeof PIPELINE_LABELS] ?? event.stage}
                   <span className="ml-2 font-normal text-muted">
-                    {new Date(event.occurredAt).toLocaleDateString("ja-JP")}
+                    {formatDate(event.occurredAt)}
                   </span>
                 </p>
                 {event.lostReason ? <p className="mt-1 text-muted">理由: {event.lostReason}</p> : null}

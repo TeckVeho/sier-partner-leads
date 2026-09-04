@@ -11,13 +11,13 @@ export const SKILL_CATALOG = [
   {
     id: "intro-draft",
     title: "紹介依頼の下書き",
-    usedBy: "候補詳細の依頼下書き",
+    usedBy: "依頼下書き（公開情報の紹介理由。点数・社内メモは渡さない）",
     relativePath: "intro-draft/SKILL.md",
   },
   {
     id: "node-discover",
     title: "ノード提案",
-    usedBy: "既存パートナーからの名簿ノード推定",
+    usedBy: "パートナーサイト複数ページと公式名簿逆引き",
     relativePath: "node-discover/SKILL.md",
   },
 ] as const;

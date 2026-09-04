@@ -1,4 +1,4 @@
-const USER_AGENT = "ARO/0.1 (+https://aro.local)";
+const USER_AGENT = "Paag/0.1 (+https://paag.local)";
 
 export async function fetchHtml(url: string, timeoutMs = 15000): Promise<string> {
   const controller = new AbortController();

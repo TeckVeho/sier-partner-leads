@@ -1,13 +1,13 @@
-# ARO 実装計画書
+# Paag 実装計画書
 
 | 項目 | 内容 |
 |---|---|
-| 文書名 | パートナー開拓支援システム（ARO）実装計画書 |
+| 文書名 | パートナー開拓支援システム（Paag）実装計画書 |
 | 版数 | 0.1（ドラフト） |
 | 作成日 | 2026-09-04 |
 | 前提文書 | 概要設計書 0.1 |
 | UI 参照元 | `/Users/kohei/Projects/dan1-new-system`（`docs/15_ui_design_spec.md` / `apps/web/components`） |
-| 既存資産 | `/Users/kohei/Projects/sier-partner-leads` |
+| 既存資産 | `/Users/kohei/Projects/paag` |
 | クラウド | **AWS**（リージョン: `ap-northeast-1` 東京） |
 | データベース | **PostgreSQL**（Amazon RDS。Supabase は使用しない） |
 
@@ -97,7 +97,7 @@ flowchart TB
 
 ### 3.2 dan1-new-system との差分
 
-| 項目 | dan1-new-system | ARO |
+| 項目 | dan1-new-system | Paag |
 |---|---|---|
 | クラウド | GCP | **AWS** |
 | DB | Cloud SQL (MySQL) | **RDS PostgreSQL** |
@@ -227,7 +227,7 @@ Supabase Auth は使用しない。Amazon Cognito User Pools で次を満たす�
 
 | 項目 | 設定 |
 |---|---|
-| リポジトリ | GitHub（既存 `sier-partner-leads` を拡張、または新リポジトリ `[要確認]`） |
+| リポジトリ | GitHub `TeckVeho/paag` |
 | ビルド | GitHub Actions → Docker イメージ → ECR push |
 | デプロイ | ECS サービスの rolling update |
 | マイグレーション | デプロイ前後に `prisma migrate deploy` |
@@ -318,7 +318,7 @@ WHERE c.status = 'candidate'
 
 ## 6. UI/UX 仕様（dan1-new-system 準拠）
 
-`dan1-new-system/docs/15_ui_design_spec.md` を正本とする。ビジュアルの色・角丸・余白・コンポーネント形状は dan1 と揃え、業務固有の情報設計のみ ARO 側で拡張する。
+`dan1-new-system/docs/15_ui_design_spec.md` を正本とする。ビジュアルの色・角丸・余白・コンポーネント形状は dan1 と揃え、業務固有の情報設計のみ Paag 側で拡張する。
 
 ### 6.1 デザイントークン
 
@@ -461,7 +461,7 @@ flowchart TB
 | 0-6 | Next.js App Router プロジェクト | アプリ |
 | 0-7 | Prisma 初期スキーマ + `migrate deploy` パイプライン | ORM |
 | 0-8 | dan1 の tailwind / globals.css / UI コンポーネント移植 | UI |
-| 0-9 | AppLayout + Sidebar + nav-config（ARO 用） | シェル |
+| 0-9 | AppLayout + Sidebar + nav-config（Paag 用） | シェル |
 | 0-10 | Cognito ログイン + ミドルウェア保護 | 認証連携 |
 | 0-11 | GitHub Actions → ECR → ECS デプロイ | CI/CD |
 | 0-12 | CloudWatch Logs 連携 | 監視 |
@@ -567,7 +567,7 @@ Phase 3-1 / 4-2 の LLM を、キーワード仮実装のあとで置換する�
 ## 8. 実装配置
 
 ```
-partnerscope/                    # リポジトリ名 [要確認]
+paag/                            # リポジトリ名
 ├── app/
 │   ├── globals.css
 │   ├── layout.tsx
@@ -657,12 +657,12 @@ partnerscope/                    # リポジトリ名 [要確認]
 | 3 | 各ノード名簿の利用規約 | `access_policy` 分布 | Phase 2 前 |
 | 4 | 依頼文の送信チャネル | 下書き形式 | Phase 4 前 |
 | 5 | Slack 通知先（DM 継続かチャネル化か） | 通知設定 | Phase 4 前 |
-| 6 | リポジトリ名（`sier-partner-leads` 拡張 vs 新規 `partnerscope`） | 構成 | Phase 0 前 |
+| 6 | リポジトリ名 | 構成 | 完了（`paag`） |
 | 7 | IaC（Terraform vs CDK） | `infra/` | Phase 0 |
 | 8 | RDS インスタンスサイズ・Multi-AZ 要否 | コスト・可用性 | Phase 0 |
 | 9 | ドメイン・Route 53 | ALB + ACM | Phase 0 |
 | 10 | 法人番号付与（gBizINFO 突合）のタイミング | 重複排除精度 | Phase 2（任意） |
-| 11 | ブランド色（dan1 流用 vs ARO 独自） | CSS 変数1箇所 | Phase 0 |
+| 11 | ブランド色（dan1 流用 vs Paag 独自） | CSS 変数1箇所 | Phase 0 |
 
 ---
 
@@ -673,9 +673,9 @@ partnerscope/                    # リポジトリ名 [要確認]
 | 概要設計書 0.1 | 背景・データモデル・機能設計の原典 |
 | `dan1-new-system/docs/15_ui_design_spec.md` | UI デザインの正本 |
 | `dan1-new-system/docs/13_phase_plan.md` | フェーズ計画の書き方の参考 |
-| `sier-partner-leads/CONTEXT.md` | 現行運用設定値 |
-| `sier-partner-leads/references/scoring.md` | 採点ルール移行元 |
-| `sier-partner-leads/references/data-sources.md` | ノード移行元 |
+| `paag/CONTEXT.md` | 現行運用設定値 |
+| `paag/references/scoring.md` | 採点ルール移行元 |
+| `paag/references/data-sources.md` | ノード移行元 |
 
 ---
 

@@ -1,23 +1,39 @@
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
-export function BrandMark({ className }: { className?: string }) {
+type BrandSize = "nav" | "hero";
+
+export function BrandLogo({
+  className,
+  size = "nav",
+}: {
+  className?: string;
+  size?: BrandSize;
+}) {
   return (
-    <div
+    <Image
+      src="/paag-wordmark.png"
+      alt="PaaG"
+      width={859}
+      height={238}
+      priority
       className={cn(
-        "flex h-8 w-8 items-center justify-center rounded-md bg-primary text-[10px] font-bold tracking-wide text-white",
+        "w-auto max-w-full object-contain object-left",
+        size === "hero" ? "h-14 sm:h-16" : "h-8",
         className,
       )}
-    >
-      ARO
-    </div>
+    />
   );
 }
 
-export function BrandLogo({ className }: { className?: string }) {
+export function BrandMark({ className }: { className?: string }) {
   return (
-    <div className={cn("flex items-center gap-2", className)}>
-      <BrandMark />
-      <span className="text-[15px] font-semibold tracking-tight text-text">ARO</span>
-    </div>
+    <Image
+      src="/paag-mark.png"
+      alt="PaaG"
+      width={214}
+      height={214}
+      className={cn("h-8 w-8 object-contain", className)}
+    />
   );
 }

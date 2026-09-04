@@ -6,8 +6,8 @@ Slack 通知先は DM `D01BG830F9U`。該当候補が0件の日は送らない�
 ## 初回セットアップ（人側）
 
 ```bash
-git clone https://github.com/TeckVeho/sier-partner-leads.git
-cd sier-partner-leads
+git clone https://github.com/TeckVeho/paag.git
+cd paag
 gh auth status   # 未認証なら gh auth login
 ```
 

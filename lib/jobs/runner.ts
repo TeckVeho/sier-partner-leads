@@ -2,13 +2,14 @@ import { prisma } from "@/lib/db";
 import { extractRosterEntries } from "@/lib/crawl/roster";
 import { fetchHtml, sleep } from "@/lib/crawl/fetcher";
 import { isRobotsAllowed } from "@/lib/crawl/robots";
-import { htmlToText } from "@/lib/html";
+import { collectSitePages } from "@/lib/crawl/site-pages";
 import { scoreCompany } from "@/lib/scoring/engine";
 import { autoDraftPriorityAIntros, formatIntroDraftNote } from "@/lib/intro/auto-draft";
 import { isLlmConfigured, LLM_KEY_ERROR } from "@/lib/llm/config";
 import { runSignalExtract } from "@/lib/llm/run-signal-extract";
 import { isUsableProfile } from "@/lib/llm/schemas";
 import { findMatchingNode, normalizeNodeName, urlAppearsInText } from "@/lib/nodes/match";
+import { reverseLookupOfficialRosters } from "@/lib/nodes/roster-reverse";
 import { runNodeDiscover } from "@/lib/llm/run-node-discover";
 
 async function updateJob(jobId: string, data: {
@@ -191,9 +192,9 @@ async function performSignalExtract(onProgress: ProgressFn, companyId?: string) 
       continue;
     }
     try {
-      const html = await fetchHtml(company.url);
-      const text = htmlToText(html);
-      if (text.length < 120) {
+      const collected = await collectSitePages(company.url);
+      const textLength = collected.pages.reduce((sum, page) => sum + page.text.length, 0);
+      if (collected.pages.length === 0 || textLength < 120) {
         insufficientCount += 1;
         insufficientNotes.push(`${company.name}: 本文が短い`);
         continue;
@@ -201,7 +202,7 @@ async function performSignalExtract(onProgress: ProgressFn, companyId?: string) 
       const extracted = await runSignalExtract({
         companyName: company.name,
         url: company.url,
-        text,
+        pages: collected.pages,
       });
       llmCount += 1;
 
@@ -211,56 +212,61 @@ async function performSignalExtract(onProgress: ProgressFn, companyId?: string) 
         continue;
       }
 
-      await prisma.signal.deleteMany({ where: { companyId: company.id } });
-      for (const signal of extracted.signals) {
-        await prisma.signal.create({
-          data: {
-            companyId: company.id,
-            signalType: signal.signalType,
-            polarity: signal.polarity,
-            evidenceText: signal.evidenceText,
-            sourceUrl: company.url,
-            confidence: signal.confidence,
-            modelVersion: extracted.modelVersion,
-          },
-        });
-      }
-      if (isUsableProfile(extracted.profile)) {
-        await prisma.companyProfile.upsert({
-          where: { companyId: company.id },
-          create: {
-            companyId: company.id,
-            summary: extracted.profile.summary,
-            businessModel: extracted.profile.businessModel,
-            offerings: extracted.profile.offerings,
-            customers: extracted.profile.customers || null,
-            techAssets: extracted.profile.techAssets || null,
-            changeSignals: extracted.profile.changeSignals || null,
-            cautions: extracted.profile.cautions || null,
-            establishedYear: extracted.profile.establishedYear || null,
-            employeeScale: extracted.profile.employeeScale || null,
-            evidenceText: extracted.profile.evidenceText || null,
-            sourceUrl: company.url,
-            modelVersion: extracted.modelVersion,
-            extractedAt: new Date(),
-          },
-          update: {
-            summary: extracted.profile.summary,
-            businessModel: extracted.profile.businessModel,
-            offerings: extracted.profile.offerings,
-            customers: extracted.profile.customers || null,
-            techAssets: extracted.profile.techAssets || null,
-            changeSignals: extracted.profile.changeSignals || null,
-            cautions: extracted.profile.cautions || null,
-            establishedYear: extracted.profile.establishedYear || null,
-            employeeScale: extracted.profile.employeeScale || null,
-            evidenceText: extracted.profile.evidenceText || null,
-            sourceUrl: company.url,
-            modelVersion: extracted.modelVersion,
-            extractedAt: new Date(),
-          },
-        });
-      }
+      const profileSource =
+        collected.pages.find((page) => page.id === extracted.profile.sourcePageId)?.url ?? collected.pages[0]!.url;
+
+      await prisma.$transaction(async (tx) => {
+        await tx.signal.deleteMany({ where: { companyId: company.id } });
+        if (extracted.signals.length > 0) {
+          await tx.signal.createMany({
+            data: extracted.signals.map((signal) => ({
+              companyId: company.id,
+              signalType: signal.signalType,
+              polarity: signal.polarity,
+              evidenceText: signal.evidenceText,
+              sourceUrl: signal.sourceUrl ?? company.url ?? "",
+              confidence: signal.confidence,
+              modelVersion: extracted.modelVersion,
+            })),
+          });
+        }
+        if (isUsableProfile(extracted.profile)) {
+          await tx.companyProfile.upsert({
+            where: { companyId: company.id },
+            create: {
+              companyId: company.id,
+              summary: extracted.profile.summary,
+              businessModel: extracted.profile.businessModel,
+              offerings: extracted.profile.offerings,
+              customers: extracted.profile.customers || null,
+              techAssets: extracted.profile.techAssets || null,
+              changeSignals: extracted.profile.changeSignals || null,
+              cautions: extracted.profile.cautions || null,
+              establishedYear: extracted.profile.establishedYear || null,
+              employeeScale: extracted.profile.employeeScale || null,
+              evidenceText: extracted.profile.evidenceText || null,
+              sourceUrl: profileSource,
+              modelVersion: extracted.modelVersion,
+              extractedAt: new Date(),
+            },
+            update: {
+              summary: extracted.profile.summary,
+              businessModel: extracted.profile.businessModel,
+              offerings: extracted.profile.offerings,
+              customers: extracted.profile.customers || null,
+              techAssets: extracted.profile.techAssets || null,
+              changeSignals: extracted.profile.changeSignals || null,
+              cautions: extracted.profile.cautions || null,
+              establishedYear: extracted.profile.establishedYear || null,
+              employeeScale: extracted.profile.employeeScale || null,
+              evidenceText: extracted.profile.evidenceText || null,
+              sourceUrl: profileSource,
+              modelVersion: extracted.modelVersion,
+              extractedAt: new Date(),
+            },
+          });
+        }
+      });
       await scoreCompany(company.id);
     } catch (error) {
       failedCount += 1;
@@ -492,6 +498,46 @@ export async function runNodeDiscoveryJob(jobId: string, partnerId?: string) {
   let insufficient = 0;
   const notes: string[] = [];
 
+  const directorySources = await prisma.directorySource.findMany();
+  const roster = await reverseLookupOfficialRosters({
+    sources: directorySources,
+    partners,
+    nodes: existingNodes,
+  });
+  notes.push(...roster.notes);
+  for (const hit of roster.hits) {
+    const key = `${hit.partnerId}:${normalizeNodeName(hit.directoryName)}`;
+    if (pendingKeys.has(key)) {
+      skipped += 1;
+      continue;
+    }
+    await prisma.nodeProposal.create({
+      data: {
+        partnerId: hit.partnerId,
+        jobRunId: jobId,
+        name: hit.directoryName,
+        nodeType: hit.nodeType,
+        rosterUrl: hit.rosterUrl,
+        evidenceText: hit.evidenceText,
+        confidence: 0.95,
+        matchedNodeId: hit.matchedNodeId,
+        discoveryMethod: "official_roster",
+        relationType: "member",
+        sourceUrl: hit.rosterUrl,
+        evidenceStrength: "explicit",
+        modelVersion: "official-roster-reverse",
+      },
+    });
+    pendingKeys.add(key);
+    created += 1;
+  }
+  if (directorySources.length > 0) {
+    await prisma.directorySource.updateMany({
+      where: { id: { in: directorySources.map((source) => source.id) } },
+      data: { lastCrawledAt: new Date() },
+    });
+  }
+
   for (let i = 0; i < partners.length; i++) {
     const partner = partners[i]!;
     await updateJob(jobId, {
@@ -499,19 +545,14 @@ export async function runNodeDiscoveryJob(jobId: string, partnerId?: string) {
       progressNote: `${partner.name} を調査中`,
     });
 
-    let text = "";
-    if (partner.url) {
-      const allowed = await isRobotsAllowed(partner.url);
-      if (!allowed) {
-        notes.push(`${partner.name}: robots.txt により取得不可`);
-        continue;
-      }
-      try {
-        text = htmlToText(await fetchHtml(partner.url));
-      } catch (error) {
-        notes.push(`${partner.name}: サイト取得失敗（${error instanceof Error ? error.message : "unknown"}）`);
-      }
+    if (!partner.url) {
+      notes.push(`${partner.name}: 公式サイトなし`);
+      continue;
     }
+
+    const collected = await collectSitePages(partner.url);
+    notes.push(...collected.notes.map((note) => `${partner.name}: ${note}`));
+    const pageText = collected.pages.map((page) => `${page.url}\n${page.text}`).join("\n");
 
     try {
       const extracted = await runNodeDiscover({
@@ -519,8 +560,7 @@ export async function runNodeDiscoveryJob(jobId: string, partnerId?: string) {
         prefecture: partner.prefecture,
         url: partner.url,
         targetPrefectures: partner.targetPrefectures,
-        relationshipNote: partner.relationshipNote,
-        text,
+        pages: collected.pages,
       });
       if (extracted.insufficient && extracted.nodes.length === 0) {
         insufficient += 1;
@@ -533,7 +573,8 @@ export async function runNodeDiscoveryJob(jobId: string, partnerId?: string) {
           skipped += 1;
           continue;
         }
-        const rosterUrl = item.rosterUrl && urlAppearsInText(item.rosterUrl, `${text}\n${partner.url ?? ""}`)
+        const sourcePage = collected.pages.find((page) => page.id === item.sourcePageId);
+        const rosterUrl = item.rosterUrl && urlAppearsInText(item.rosterUrl, `${pageText}\n${partner.url ?? ""}`)
           ? item.rosterUrl
           : null;
         const matched = findMatchingNode({ name: item.name, rosterUrl }, existingNodes);
@@ -547,6 +588,10 @@ export async function runNodeDiscoveryJob(jobId: string, partnerId?: string) {
             evidenceText: item.evidenceText,
             confidence: item.confidence,
             matchedNodeId: matched?.id ?? null,
+            discoveryMethod: "partner_site",
+            relationType: item.relationType,
+            sourceUrl: sourcePage?.url ?? partner.url,
+            evidenceStrength: "explicit",
             modelVersion: extracted.modelVersion,
           },
         });

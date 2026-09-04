@@ -1,26 +1,32 @@
-import { formatModelVersion, requireLlmConfigured, SIGNAL_SKILL_ID, SITE_TEXT_LIMIT } from "@/lib/llm/config";
-import { completeJson } from "@/lib/llm/client";
+import { requireLlmConfigured } from "@/lib/llm/config";
+import { completeStructured } from "@/lib/llm/client";
+import { SIGNAL_EXTRACT_SCHEMA } from "@/lib/llm/gemini-schemas";
 import { loadSkillMarkdown, stripSkillFrontmatter } from "@/lib/llm/load-skill";
-import { parseSignalExtractJson, type SignalExtractResult } from "@/lib/llm/schemas";
+import { applySignalEvidence, parseSignalExtractJson, type SignalExtractResult } from "@/lib/llm/schemas";
+import { skillModelVersion } from "@/lib/llm/skill-version";
+import { formatPagesForPrompt, type EvidencePage } from "@/lib/text/evidence";
 
 export async function runSignalExtract(input: {
   companyName: string;
   url: string;
-  text: string;
+  pages: EvidencePage[];
 }): Promise<SignalExtractResult> {
   await requireLlmConfigured();
-  const clipped = input.text.slice(0, SITE_TEXT_LIMIT);
-  const skill = stripSkillFrontmatter(loadSkillMarkdown("signal-extract"));
+  const markdown = loadSkillMarkdown("signal-extract");
+  const skill = stripSkillFrontmatter(markdown);
   const user = `会社名: ${input.companyName}
-URL: ${input.url}
+公式サイト: ${input.url}
 
---- サイト本文 ---
-${clipped}`;
+--- 公開ページ ---
+${formatPagesForPrompt(input.pages)}`;
 
-  const parsed = parseSignalExtractJson(await completeJson(skill, user));
+  const parsed = applySignalEvidence(
+    parseSignalExtractJson(await completeStructured(skill, user, SIGNAL_EXTRACT_SCHEMA)),
+    input.pages,
+  );
   return {
     ...parsed,
     fallback: false,
-    modelVersion: formatModelVersion(SIGNAL_SKILL_ID),
+    modelVersion: skillModelVersion("signal-extract", markdown),
   };
 }

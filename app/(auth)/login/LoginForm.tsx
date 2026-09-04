@@ -50,7 +50,7 @@ export default function LoginForm() {
     <div className="auth-backdrop flex min-h-screen flex-col items-center justify-center px-4 py-10">
       <div className="w-full max-w-[420px] animate-auth-rise">
         <div className="mb-6 flex flex-col items-center text-center">
-          <BrandLogo className="mb-4" />
+          <BrandLogo size="hero" className="mb-4" />
           <p className="mt-1.5 text-[13px] text-muted">メールアドレスとパスワードでログイン</p>
         </div>
 

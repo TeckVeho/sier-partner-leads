@@ -109,6 +109,23 @@ enum NodeProposalStatus {
   rejected
 }
 
+enum DiscoveryMethod {
+  partner_site
+  official_roster
+}
+
+enum NodeRelationType {
+  member
+  certified_partner
+  reseller
+  bank_relation
+}
+
+enum EvidenceStrength {
+  explicit
+  indirect
+}
+
 model User {
   id         String   @id @default(uuid()) @db.Uuid
   cognitoSub String?  @unique @map("cognito_sub")
@@ -144,6 +161,23 @@ model Partner {
   nodeProposals   NodeProposal[]
 
   @@map("partners")
+}
+
+model DirectorySource {
+  id             String       @id @default(uuid()) @db.Uuid
+  name           String
+  nodeType       NodeType     @map("node_type")
+  officialDomain String?      @map("official_domain")
+  rosterUrl      String       @unique @map("roster_url")
+  prefectures    String[]     @default([])
+  accessPolicy   AccessPolicy @default(public) @map("access_policy")
+  crawlEnabled   Boolean      @default(false) @map("crawl_enabled")
+  lastCrawledAt  DateTime?    @map("last_crawled_at") @db.Timestamptz
+  note           String?
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("directory_sources")
 }
 
 model Node {
@@ -184,22 +218,26 @@ model PartnerNodeMembership {
 }
 
 model NodeProposal {
-  id             String             @id @default(uuid()) @db.Uuid
-  partnerId      String             @map("partner_id") @db.Uuid
-  jobRunId       String?            @map("job_run_id") @db.Uuid
-  name           String
-  nodeType       NodeType           @map("node_type")
-  rosterUrl      String?            @map("roster_url")
-  evidenceText   String             @map("evidence_text")
-  confidence     Decimal?           @db.Decimal(4, 3)
-  status         NodeProposalStatus @default(pending)
-  matchedNodeId  String?            @map("matched_node_id") @db.Uuid
-  acceptedNodeId String?            @map("accepted_node_id") @db.Uuid
-  modelVersion   String?            @map("model_version")
-  reviewedAt     DateTime?          @map("reviewed_at") @db.Timestamptz
-  reviewedById   String?            @map("reviewed_by") @db.Uuid
-  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime           @updatedAt @map("updated_at") @db.Timestamptz
+  id                String             @id @default(uuid()) @db.Uuid
+  partnerId         String             @map("partner_id") @db.Uuid
+  jobRunId          String?            @map("job_run_id") @db.Uuid
+  name              String
+  nodeType          NodeType           @map("node_type")
+  rosterUrl         String?            @map("roster_url")
+  evidenceText      String             @map("evidence_text")
+  confidence        Decimal?           @db.Decimal(4, 3)
+  status            NodeProposalStatus @default(pending)
+  matchedNodeId     String?            @map("matched_node_id") @db.Uuid
+  acceptedNodeId    String?            @map("accepted_node_id") @db.Uuid
+  modelVersion      String?            @map("model_version")
+  discoveryMethod   DiscoveryMethod?   @map("discovery_method")
+  relationType      NodeRelationType?  @map("relation_type")
+  sourceUrl         String?            @map("source_url")
+  evidenceStrength  EvidenceStrength?  @map("evidence_strength")
+  reviewedAt        DateTime?          @map("reviewed_at") @db.Timestamptz
+  reviewedById      String?            @map("reviewed_by") @db.Uuid
+  createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime           @updatedAt @map("updated_at") @db.Timestamptz
 
   partner      Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
   matchedNode  Node?   @relation("ProposalMatch", fields: [matchedNodeId], references: [id], onDelete: SetNull)

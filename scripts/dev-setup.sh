@@ -13,7 +13,7 @@ docker-compose up -d
 
 echo "Waiting for PostgreSQL..."
 for i in {1..30}; do
-  if docker-compose exec -T postgres pg_isready -U partnerscope -d partnerscope >/dev/null 2>&1; then
+  if docker-compose exec -T postgres pg_isready -U paag -d paag >/dev/null 2>&1; then
     break
   fi
   sleep 1

@@ -2,7 +2,7 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import type { SessionPayload } from "./types";
 
-const SESSION_COOKIE = "aro_session";
+const SESSION_COOKIE = "paag_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 12;
 
 function getSecret() {

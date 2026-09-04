@@ -1,31 +1,35 @@
-import { formatModelVersion, NODE_DISCOVER_SKILL_ID, requireLlmConfigured, SITE_TEXT_LIMIT } from "@/lib/llm/config";
-import { completeJson } from "@/lib/llm/client";
+import { requireLlmConfigured } from "@/lib/llm/config";
+import { completeStructured } from "@/lib/llm/client";
+import { NODE_DISCOVER_SCHEMA } from "@/lib/llm/gemini-schemas";
 import { loadSkillMarkdown, stripSkillFrontmatter } from "@/lib/llm/load-skill";
-import { parseNodeDiscoverJson, type NodeDiscoverResult } from "@/lib/llm/schemas";
+import { applyNodeEvidence, parseNodeDiscoverJson, type NodeDiscoverResult } from "@/lib/llm/schemas";
+import { skillModelVersion } from "@/lib/llm/skill-version";
+import { formatPagesForPrompt, type EvidencePage } from "@/lib/text/evidence";
 
 export async function runNodeDiscover(input: {
   partnerName: string;
   prefecture: string | null;
   url: string | null;
   targetPrefectures: string[];
-  relationshipNote: string | null;
-  text: string;
+  pages: EvidencePage[];
 }): Promise<NodeDiscoverResult & { modelVersion: string }> {
   await requireLlmConfigured();
-  const skill = stripSkillFrontmatter(loadSkillMarkdown("node-discover"));
-  const clipped = input.text.slice(0, SITE_TEXT_LIMIT);
+  const markdown = loadSkillMarkdown("node-discover");
+  const skill = stripSkillFrontmatter(markdown);
   const user = `パートナー名: ${input.partnerName}
 所在地: ${input.prefecture ?? "不明"}
 対象エリア: ${input.targetPrefectures.join("・") || "未設定"}
 公式サイト: ${input.url ?? "なし"}
-関係メモ: ${input.relationshipNote ?? "なし"}
 
---- サイト本文 ---
-${clipped || "（本文なし）"}`;
+--- 公開ページ ---
+${formatPagesForPrompt(input.pages)}`;
 
-  const parsed = parseNodeDiscoverJson(await completeJson(skill, user));
+  const parsed = applyNodeEvidence(
+    parseNodeDiscoverJson(await completeStructured(skill, user, NODE_DISCOVER_SCHEMA)),
+    input.pages,
+  );
   return {
     ...parsed,
-    modelVersion: formatModelVersion(NODE_DISCOVER_SKILL_ID),
+    modelVersion: skillModelVersion("node-discover", markdown),
   };
 }

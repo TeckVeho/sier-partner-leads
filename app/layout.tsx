@@ -14,11 +14,11 @@ const notoSansJp = Noto_Sans_JP({
 });
 
 export const metadata: Metadata = {
-  title: "ARO",
+  title: "PaaG",
   description: "地方SIerパートナー開拓支援システム",
   icons: {
-    icon: "/icon",
-    apple: "/apple-icon",
+    icon: "/paag-mark.png",
+    apple: "/paag-mark.png",
   },
 };
 

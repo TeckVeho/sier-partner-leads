@@ -3,9 +3,12 @@ import { resolveGeminiApiKey } from "@/lib/llm/key-store";
 export const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
 export const LLM_TIMEOUT_MS = 45_000;
 export const SITE_TEXT_LIMIT = 12_000;
-export const SIGNAL_SKILL_ID = "signal-extract@2026-09-04-profile";
-export const INTRO_SKILL_ID = "intro-draft@2026-09-04";
-export const NODE_DISCOVER_SKILL_ID = "node-discover@2026-09-04";
+export const SITE_PAGE_CHAR_LIMIT = 12_000;
+export const SITE_TOTAL_CHAR_LIMIT = 40_000;
+export const SITE_PAGE_LIMIT = 5;
+export const SIGNAL_SKILL_ID = "signal-extract";
+export const INTRO_SKILL_ID = "intro-draft";
+export const NODE_DISCOVER_SKILL_ID = "node-discover";
 export const LLM_KEY_ERROR =
   "Gemini のキーが未設定です。スキル管理から登録するか、.env に GEMINI_API_KEY を置いてください。";
 

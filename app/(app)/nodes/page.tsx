@@ -21,6 +21,8 @@ export default async function NodesPage() {
           rosterUrl: row.rosterUrl,
           evidenceText: row.evidenceText,
           confidence: row.confidence == null ? null : Number(row.confidence),
+          discoveryMethod: row.discoveryMethod,
+          sourceUrl: row.sourceUrl,
           partner: row.partner,
           matchedNode: row.matchedNode,
         }))}
