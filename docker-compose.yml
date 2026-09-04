@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: partnerscope
+      POSTGRES_PASSWORD: partnerscope
+      POSTGRES_DB: partnerscope
+    volumes:
+      - partnerscope_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U partnerscope -d partnerscope"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  partnerscope_pg:

@@ -1,0 +1,434 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  admin
+  member
+}
+
+enum NodeType {
+  vendor
+  association
+  financial
+}
+
+enum AccessPolicy {
+  public
+  members_only
+  prohibited
+}
+
+enum CompanyStatus {
+  candidate
+  excluded
+  on_hold
+}
+
+enum SignalType {
+  legacy_asset
+  stock_revenue
+  crisis_awareness
+  ai_inhouse
+  subsidiary
+  customer_overlap
+}
+
+enum SignalPolarity {
+  positive
+  negative
+  exclusion
+}
+
+enum ScoringAxis {
+  icp
+  path
+}
+
+enum Priority {
+  A
+  B
+  C
+  hold
+}
+
+enum IntroRequestStatus {
+  draft
+  approved
+  sent
+  accepted
+  declined
+}
+
+enum PipelineStage {
+  not_contacted
+  requested
+  intro_obtained
+  first_contact
+  meeting
+  partnership
+  lost
+}
+
+enum JobRunStatus {
+  pending
+  running
+  completed
+  failed
+}
+
+enum JobRunType {
+  roster_crawl
+  signal_extract
+  score_recalc
+  node_discovery
+  ledger_update
+}
+
+enum CrawlRunStatus {
+  success
+  partial
+  failed
+}
+
+enum ContactType {
+  phone
+  email
+  visit
+  other
+}
+
+enum NodeProposalStatus {
+  pending
+  accepted
+  rejected
+}
+
+model User {
+  id         String   @id @default(uuid()) @db.Uuid
+  cognitoSub String?  @unique @map("cognito_sub")
+  email      String   @unique
+  name       String
+  role       UserRole @default(member)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  approvedIntroRequests IntroRequest[] @relation("IntroRequestApprover")
+  pipelineEvents        PipelineEvent[]
+  contactLogs           ContactLog[]
+  auditLogs             AuditLog[]
+  reviewedNodeProposals NodeProposal[] @relation("NodeProposalReviewer")
+
+  @@map("users")
+}
+
+model Partner {
+  id                String   @id @default(uuid()) @db.Uuid
+  name              String
+  url               String?
+  prefecture        String?
+  targetPrefectures String[] @default([]) @map("target_prefectures")
+  introContactLevel String?  @map("intro_contact_level")
+  relationshipNote  String?  @map("relationship_note")
+  isActive          Boolean  @default(true) @map("is_active")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  nodeMemberships PartnerNodeMembership[]
+  introRequests   IntroRequest[]
+  nodeProposals   NodeProposal[]
+
+  @@map("partners")
+}
+
+model Node {
+  id             String       @id @default(uuid()) @db.Uuid
+  name           String
+  nodeType       NodeType     @map("node_type")
+  rosterUrl      String?      @map("roster_url")
+  accessPolicy   AccessPolicy @default(prohibited) @map("access_policy")
+  crawlEnabled   Boolean      @default(false) @map("crawl_enabled")
+  lastCrawledAt  DateTime?    @map("last_crawled_at") @db.Timestamptz
+  basePathScore  Int          @default(0) @map("base_path_score")
+  note           String?
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+
+  partnerMemberships PartnerNodeMembership[]
+  companyMemberships NodeMembership[]
+  introRequests      IntroRequest[]
+  crawlRuns          CrawlRun[]
+  matchedProposals   NodeProposal[] @relation("ProposalMatch")
+  acceptedProposals  NodeProposal[] @relation("ProposalAccepted")
+
+  @@map("nodes")
+}
+
+model PartnerNodeMembership {
+  id        String   @id @default(uuid()) @db.Uuid
+  partnerId String   @map("partner_id") @db.Uuid
+  nodeId    String   @map("node_id") @db.Uuid
+  note      String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  partner Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  node    Node    @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+
+  @@unique([partnerId, nodeId])
+  @@map("partner_node_memberships")
+}
+
+model NodeProposal {
+  id             String             @id @default(uuid()) @db.Uuid
+  partnerId      String             @map("partner_id") @db.Uuid
+  jobRunId       String?            @map("job_run_id") @db.Uuid
+  name           String
+  nodeType       NodeType           @map("node_type")
+  rosterUrl      String?            @map("roster_url")
+  evidenceText   String             @map("evidence_text")
+  confidence     Decimal?           @db.Decimal(4, 3)
+  status         NodeProposalStatus @default(pending)
+  matchedNodeId  String?            @map("matched_node_id") @db.Uuid
+  acceptedNodeId String?            @map("accepted_node_id") @db.Uuid
+  modelVersion   String?            @map("model_version")
+  reviewedAt     DateTime?          @map("reviewed_at") @db.Timestamptz
+  reviewedById   String?            @map("reviewed_by") @db.Uuid
+  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime           @updatedAt @map("updated_at") @db.Timestamptz
+
+  partner      Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  matchedNode  Node?   @relation("ProposalMatch", fields: [matchedNodeId], references: [id], onDelete: SetNull)
+  acceptedNode Node?   @relation("ProposalAccepted", fields: [acceptedNodeId], references: [id], onDelete: SetNull)
+  reviewedBy   User?   @relation("NodeProposalReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([partnerId, status])
+  @@map("node_proposals")
+}
+
+model Company {
+  id              String        @id @default(uuid()) @db.Uuid
+  name            String
+  url             String?
+  prefecture      String?
+  city            String?
+  corporateNumber String?       @map("corporate_number")
+  status          CompanyStatus @default(candidate)
+  exclusionReason String?       @map("exclusion_reason")
+  discoveredAt    DateTime      @default(now()) @map("discovered_at") @db.Timestamptz
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+
+  nodeMemberships NodeMembership[]
+  signals         Signal[]
+  scores          CompanyScore[]
+  introRequests   IntroRequest[]
+  pipelineEvents  PipelineEvent[]
+  contactLogs     ContactLog[]
+  profile         CompanyProfile?
+
+  @@index([status])
+  @@index([prefecture])
+  @@map("companies")
+}
+
+model CompanyProfile {
+  id              String   @id @default(uuid()) @db.Uuid
+  companyId       String   @unique @map("company_id") @db.Uuid
+  summary         String
+  businessModel   String   @default("unknown") @map("business_model")
+  offerings       String[] @default([])
+  customers       String?
+  techAssets      String?  @map("tech_assets")
+  changeSignals   String?  @map("change_signals")
+  cautions        String?
+  establishedYear String?  @map("established_year")
+  employeeScale   String?  @map("employee_scale")
+  evidenceText    String?  @map("evidence_text")
+  sourceUrl       String?  @map("source_url")
+  modelVersion    String?  @map("model_version")
+  extractedAt     DateTime @default(now()) @map("extracted_at") @db.Timestamptz
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("company_profiles")
+}
+
+model NodeMembership {
+  id         String   @id @default(uuid()) @db.Uuid
+  nodeId     String   @map("node_id") @db.Uuid
+  companyId  String   @map("company_id") @db.Uuid
+  sourceUrl  String?  @map("source_url")
+  detectedAt DateTime @default(now()) @map("detected_at") @db.Timestamptz
+
+  node    Node    @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([nodeId, companyId])
+  @@map("node_memberships")
+}
+
+model Signal {
+  id           String         @id @default(uuid()) @db.Uuid
+  companyId    String         @map("company_id") @db.Uuid
+  signalType   SignalType     @map("signal_type")
+  polarity     SignalPolarity
+  evidenceText String         @map("evidence_text")
+  sourceUrl    String         @map("source_url")
+  confidence   Decimal?       @db.Decimal(4, 3)
+  extractedAt  DateTime       @default(now()) @map("extracted_at") @db.Timestamptz
+  modelVersion String?        @map("model_version")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@map("signals")
+}
+
+model ScoringRule {
+  id            String      @id @default(uuid()) @db.Uuid
+  ruleKey       String      @map("rule_key")
+  axis          ScoringAxis
+  weight        Int
+  isExclusion   Boolean     @default(false) @map("is_exclusion")
+  version       Int
+  effectiveFrom DateTime    @default(now()) @map("effective_from") @db.Timestamptz
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([version, axis])
+  @@map("scoring_rules")
+}
+
+model CompanyScore {
+  id           String   @id @default(uuid()) @db.Uuid
+  companyId    String   @map("company_id") @db.Uuid
+  icpScore     Int      @map("icp_score")
+  pathScore    Int      @map("path_score")
+  priority     Priority
+  breakdown    Json     @default("{}")
+  rulesVersion Int      @map("rules_version")
+  calculatedAt DateTime @default(now()) @map("calculated_at") @db.Timestamptz
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, calculatedAt])
+  @@map("company_scores")
+}
+
+model IntroRequest {
+  id            String             @id @default(uuid()) @db.Uuid
+  companyId     String             @map("company_id") @db.Uuid
+  viaPartnerId  String             @map("via_partner_id") @db.Uuid
+  viaNodeId     String             @map("via_node_id") @db.Uuid
+  draftBody     String             @map("draft_body")
+  status        IntroRequestStatus @default(draft)
+  approvedById  String?            @map("approved_by") @db.Uuid
+  approvedAt    DateTime?          @map("approved_at") @db.Timestamptz
+  sentAt        DateTime?          @map("sent_at") @db.Timestamptz
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime           @updatedAt @map("updated_at") @db.Timestamptz
+
+  company    Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  viaPartner Partner @relation(fields: [viaPartnerId], references: [id])
+  viaNode    Node    @relation(fields: [viaNodeId], references: [id])
+  approvedBy User?   @relation("IntroRequestApprover", fields: [approvedById], references: [id])
+
+  @@index([status])
+  @@map("intro_requests")
+}
+
+model PipelineEvent {
+  id         String        @id @default(uuid()) @db.Uuid
+  companyId  String        @map("company_id") @db.Uuid
+  stage      PipelineStage
+  lostReason String?       @map("lost_reason")
+  note       String?
+  occurredAt DateTime      @default(now()) @map("occurred_at") @db.Timestamptz
+  recordedById String?     @map("recorded_by") @db.Uuid
+
+  company    Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  recordedBy User?   @relation(fields: [recordedById], references: [id])
+
+  @@index([companyId, occurredAt])
+  @@map("pipeline_events")
+}
+
+model CrawlRun {
+  id            String         @id @default(uuid()) @db.Uuid
+  nodeId        String?        @map("node_id") @db.Uuid
+  sourceUrl     String         @map("source_url")
+  status        CrawlRunStatus
+  robotsAllowed Boolean        @default(true) @map("robots_allowed")
+  newCount      Int            @default(0) @map("new_count")
+  updatedCount  Int            @default(0) @map("updated_count")
+  errorMessage  String?        @map("error_message")
+  startedAt     DateTime       @default(now()) @map("started_at") @db.Timestamptz
+  finishedAt    DateTime?      @map("finished_at") @db.Timestamptz
+
+  node Node? @relation(fields: [nodeId], references: [id], onDelete: SetNull)
+
+  @@map("crawl_runs")
+}
+
+model JobRun {
+  id           String       @id @default(uuid()) @db.Uuid
+  jobType      JobRunType   @map("job_type")
+  status       JobRunStatus @default(pending)
+  progress     Int          @default(0)
+  progressNote String?      @map("progress_note")
+  payload      Json         @default("{}")
+  result       Json?
+  errorMessage String?      @map("error_message")
+  startedAt    DateTime?    @map("started_at") @db.Timestamptz
+  finishedAt   DateTime?    @map("finished_at") @db.Timestamptz
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([status, createdAt])
+  @@map("job_runs")
+}
+
+model ContactLog {
+  id           String      @id @default(uuid()) @db.Uuid
+  companyId    String      @map("company_id") @db.Uuid
+  contactType  ContactType @map("contact_type")
+  content      String
+  contactedAt  DateTime    @default(now()) @map("contacted_at") @db.Timestamptz
+  recordedById String?     @map("recorded_by") @db.Uuid
+  createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamptz
+
+  company    Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  recordedBy User?   @relation(fields: [recordedById], references: [id])
+
+  @@index([companyId, contactedAt])
+  @@map("contact_logs")
+}
+
+model SystemSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("system_settings")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String?  @map("user_id") @db.Uuid
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String?  @map("entity_id")
+  before     Json?
+  after      Json?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, createdAt])
+  @@map("audit_logs")
+}

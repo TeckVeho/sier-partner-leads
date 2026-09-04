@@ -1,14 +1,36 @@
-.DS_Store
+# Dependencies
+node_modules/
+.next/
+out/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Prisma
+prisma/*.db
+
+# Python (legacy pipeline)
 __pycache__/
 *.py[cod]
 .venv/
 venv/
-tmp/
-*.tmp.csv
+
+# OS / IDE
+.DS_Store
 .idea/
 .vscode/
+
+# Legacy pipeline temp files
+tmp/
+*.tmp.csv
 _incoming_*.csv
 *.lock
 *.lock.bak
 *.lock.bak[0-9]
 _to_delete/
+
+# TypeScript
+next-env.d.ts
+*.tsbuildinfo

@@ -1,56 +1,66 @@
-# sier-partner-leads
+# ARO（sier-partner-leads）
 
-群馬・栃木・茨城の地方SIerパートナー候補を日次で蓄積するリポジトリ。
-
-一次スクリーニングはルールベース、高スコアだけ Cowork がサイトを読み直す。
-Slack 通知は「確定候補」ではなく **要確認**。商談前の最終判断は人。
+地方 SIer パートナー開拓支援システム。既存 Cowork スキル `sier-partner-screening` の後継。
 
 ## 構成
 
-```
-├── SKILL.md
-├── data/candidates.csv
-├── references/
-│   ├── data-sources.md
-│   └── scoring.md
-└── scripts/
-    ├── score_site.py
-    ├── git_append.py
-    └── COWORK_PROMPTS.md
-```
+| パス | 内容 |
+|---|---|
+| `app/` | Next.js App Router（Web UI + API） |
+| `components/` | UI コンポーネント（dan1-new-system 準拠） |
+| `prisma/` | PostgreSQL スキーマ・マイグレーション |
+| `lib/` | 認証・DB・ユーティリティ |
+| `data/` | レガシー CSV（移行元） |
+| `scripts/` | レガシー Python パイプライン |
+| `docs/` | 設計書・実装計画 |
+| `skills/` | LLM タスクの正本（シグナル抽出・依頼下書き） |
 
-## 初回セットアップ
+## ローカル開発
 
-```bash
-git clone https://github.com/TeckVeho/sier-partner-leads.git
-cd sier-partner-leads
-gh auth status   # 未認証なら gh auth login
-```
-
-Cowork のプロジェクトに、clone したパスを追加する。
-日次タスクの文面は `scripts/COWORK_PROMPTS.md` を貼る。
-
-Slack 通知先は DM `D01BG830F9U`。他ファイルと食い違ったら `CONTEXT.md` を正とする。
-
-## スクリプト
-
-一時CSVを追記する（既存行は上書きしない）:
+### 一括セットアップ（初回）
 
 ```bash
-python3 scripts/git_append.py --repo . --input /tmp/new_candidates.csv
+npm install
+npm run dev:setup   # PostgreSQL起動 + migrate + seed
+npm run dev
 ```
 
-1社の本文をルールベース採点する:
+### 手動セットアップ
 
 ```bash
-python3 scripts/score_site.py --name "会社名" --url "https://example.com"
+docker-compose up -d          # PostgreSQL（ポート 5433）
+cp .env.example .env          # 初回のみ
+npm install
+npm run db:migrate:deploy
+npm run db:seed
+npm run dev
 ```
 
-空欄・取得失敗は `fetched_ok=false` になり、スコアは付けない。
+http://localhost:3000 にアクセス。
 
-## スコア7+の扱い
+- メール: `admin@example.com`
+- パスワード: `admin`（`.env` の `DEV_LOGIN_PASSWORD`）
+- AI: 名簿クロール・再調査・依頼下書き・ノード提案は Gemini 必須です。`.env` に `GEMINI_API_KEY` を置きます。未設定だと実行はエラーになります。
 
-1. Cowork が実サイトを読み直す
-2. 除外なら `verdict` に理由を書いて Issue / Slack は出さない
-3. 問題なければ GitHub Issue（ラベル「要確認」）と Slack 通知
-4. 0件の日は Slack しない
+### トラブルシューティング
+
+| 症状 | 対処 |
+|---|---|
+| 「PostgreSQL に接続できません」 | `docker-compose up -d` を実行 |
+| 「データベースの初期化が未完了」 | `npm run db:migrate:deploy && npm run db:seed` |
+| ポート 3000 が使用中 | 別プロセスを停止するか `next dev -p 3001` |
+| `docker compose` が使えない | この環境では **`docker-compose`**（ハイフン付き）を使用 |
+
+ヘルスチェック: http://localhost:3000/api/health
+
+## デプロイ
+
+AWS ECS Fargate + RDS PostgreSQL を前提としています。詳細は `docs/01_implementation_plan.md` を参照。
+
+```bash
+docker build -t aro .
+```
+
+## レガシーパイプライン
+
+`scripts/` と `SKILL.md` は移行完了まで残しています。新システムの正データは PostgreSQL です。
